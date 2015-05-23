@@ -52,9 +52,9 @@
             this.connection = this.peer.connect(id);
             this.peerId = this.connection.peer;
 
+            this.isHost = true;
+
             this._setupEvents(this.connection);
-            
-            this.isHost = false;
         }
     }
 

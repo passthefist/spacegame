@@ -9,13 +9,13 @@
         this.states[state.name] = state;
     }
 
-    GameStateManager.set = function(state) {
+    GameStateManager.set = function(state,data) {
         if (this.active) {
             this.active.exit();
         }
         this.active = this.states[state];
         console.log(this.active);
-        this.active.enter();
+        this.active.enter(data);
     }
 
     GameStateManager.update = function(state) {

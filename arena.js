@@ -3,7 +3,4 @@
     }
 
     var Arena = this.Arena.prototype;
-
-
-
 }).apply(window);

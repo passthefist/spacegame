@@ -1,7 +1,7 @@
 <form>
 <label id="id" for="peer"></label>
 <input type="text" name="peer" id="peer"/>
-<input type="button" id="connect" value="Click to connect"></button>
+<input type="button" id="connect" value="Click to connect"></input>
 </form>
 
 <script src='http://cdn.peerjs.com/0.3.9/peer.js'></script>
@@ -11,6 +11,7 @@
 <script src='connection.js'></script>
 <script src='input.js'></script>
 <script src='gamestate.js'></script>
+<script src='ship.js'></script>
 
 <div id = 'gameview'></div>
 
@@ -49,7 +50,9 @@ function update() {
         });
 
         conn.connect.on(this, function(conn) {
-            manager.set('main');
+            var data ={};
+            data.conn = conn;
+            manager.set('main',data);
         });
 
         button.onclick = function(e) {
@@ -67,33 +70,27 @@ function update() {
 (function() {
     this.Main = function() {
         this.name = "main";
-        this.sprite = null;
+        this.ship = null;
     }
 
     this.Main.prototype = new GameState();
     var Main = this.Main.prototype;
 
-    Main.enter = function() {
+    Main.enter = function(data) {
         game.stage.backgroundColor = '#736357';
-        this.sprite = game.add.sprite(300, 300, 'stick');
+
+        if (data.conn.isHost) {
+        } else {
+        }
+        this.ship = new Ship(game,x,y);
     }
 
     Main.update = function() {
         if (input.click) {
-            this.sprite.x = game.input.activePointer.position.x;
-            this.sprite.y = game.input.activePointer.position.y;
-            conn.send({
-                x:this.sprite.x,
-                y:this.sprite.y
-            });
-        }
-
-        var buf = conn.recv();
-        if (buf.length > 0) {
-            var loc = buf[buf.length-1];
-
-            this.sprite.x = loc.x;
-            this.sprite.y = loc.y;
+            this.ship(
+                game.input.activePointer.position.x,
+                game.input.activePointer.position.y;
+            );
         }
     }
 }).apply(window);
