@@ -8,6 +8,7 @@
 
     Input.update = function() {
         this.click = !this.lastMouse && game.input.activePointer.isDown;
+        this.down = game.input.activePointer.isDown;
         this.lastMouse = game.input.activePointer.isDown;
     }
 

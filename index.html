@@ -16,7 +16,6 @@
 <div id = 'gameview'></div>
 
 <script>
-
 var peer = new Peer({key: 'lwjd5qra8257b9'});
 var label = document.querySelector("#id");
 var button = document.querySelector("#connect");
@@ -27,6 +26,7 @@ var manager = new GameStateManager();
 var input = new Input();
 var conn = new Connection();
 
+/*
 var game = new Phaser.Game(800, 600, Phaser.AUTO, 'gameview', { preload: preload, create: create, update: update });
 
 function preload() {
@@ -34,6 +34,7 @@ function preload() {
 }
 
 function create() {
+    manager.set('main');
 }
 
 function update() {
@@ -67,35 +68,48 @@ function update() {
 
 }).apply(window);
 
-(function() {
-    this.Main = function() {
-        this.name = "main";
-        this.ship = null;
+*/
+
+var GameState = function(game) {
+};
+
+// Load images and sounds
+GameState.prototype.preload = function() {
+    this.game.load.image('ship', 'ship.png');
+    this.game.load.image('bullet', 'bullet.png');
+};
+
+// Setup the example
+GameState.prototype.create = function() {
+    // Set stage background to something sky colored
+    this.game.stage.backgroundColor = 0x4488cc;
+
+    // Create a missile and add it to the game in the bottom center of the stage
+    this.ship = new Ship(this.game, this.game.width/2, this.game.height - 16);
+    this.game.add.existing(
+        this.ship
+    );
+};
+
+// The update() method is called every frame
+GameState.prototype.update = function() {
+    input.update();
+    if (input.down) {
+        this.ship.targetVector(
+            game.input.activePointer.position.x,
+            game.input.activePointer.position.y
+        );
+        this.ship.throttle(true);
+    } else {
+        this.ship.throttle(false);
     }
 
-    this.Main.prototype = new GameState();
-    var Main = this.Main.prototype;
-
-    Main.enter = function(data) {
-        game.stage.backgroundColor = '#736357';
-
-        if (data.conn.isHost) {
-        } else {
-        }
-        this.ship = new Ship(game,x,y);
+    if (game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
+        this.ship.fire();
     }
+};
 
-    Main.update = function() {
-        if (input.click) {
-            this.ship(
-                game.input.activePointer.position.x,
-                game.input.activePointer.position.y;
-            );
-        }
-    }
-}).apply(window);
+var game = new Phaser.Game(848, 450, Phaser.AUTO, 'gameview');
+game.state.add('game', GameState, true);
 
-manager.add(new Main());
-manager.add(new Intro());
-manager.set('intro');
 </script>
