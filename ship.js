@@ -23,6 +23,12 @@
 
         this.FIRE_RATE = 15;
         this.timer = 0;
+
+        this.BOOST_RATE = 120;
+        this.boostRate = 0;
+
+        this.BOOST_TIME = 35;
+        this.boostTime = 0;
     };
 
     // Missiles are a type of Phaser.Sprite
@@ -32,6 +38,14 @@
 
     Ship.update = function() {
         this.timer ++;
+        this.boostRate ++;
+
+        if (this.boostTime > 0) {
+            this.boostTime --;
+            this.boosting = true;
+        } else {
+            this.boosting = false;
+        }
 
         if (this.active) {
             // Calculate the angle from the missile to the mouse cursor game.input.x
@@ -66,7 +80,6 @@
                 } else if ( delta < -this.BOOST_ASSIST_RANGE ) {
                     accelMod = (-delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
                 }
-                console.log(delta);
 
                 // Just set angle to target angle if they are close
                 if (Math.abs(delta) < this.game.math.degToRad(this.TURN_RATE)) {
@@ -79,15 +92,10 @@
             this.body.acceleration.y = Math.sin(this.rotation) * this.ACCEL;
 
             if (accelMod > 0) {
-                console.log(accelMod);
                 this.body.acceleration.x += Math.cos(targetAngle) * this.ACCEL * this.BOOST_ASSIST_MAG * accelMod;
                 this.body.acceleration.y += Math.sin(targetAngle) * this.ACCEL * this.BOOST_ASSIST_MAG * accelMod;
             }
 
-            if (this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
-                this.body.velocity.normalize();
-                this.body.velocity.setMagnitude(this.SPEED);
-            }
         } else {
             this.body.acceleration.x = 0;
             this.body.acceleration.y = 0;
@@ -97,6 +105,28 @@
                 mag = 0;
             }
             this.body.velocity.setMagnitude(0.98*mag);
+        }
+
+        if (this.boosting) {
+            this.SPEED = 550;
+
+            var boostMod = 3 * this.ACCEL * (this.boostTime/this.BOOST_TIME);
+
+            this.body.acceleration.x += Math.cos(targetAngle) * boostMod/3 + Math.cos(this.rotation) * boostMod;
+            this.body.acceleration.y += Math.sin(targetAngle) * boostMod/3 + Math.sin(this.rotation) * boostMod;
+        } else {
+            if (this.SPEED > 250) {
+                var diff = (this.SPEED - 250)/10;
+                this.SPEED -= diff;
+                if (this.SPEED - 250 < 0.5) {
+                    this.SPEED = 250;
+                }
+            }
+        }
+
+        if (!this.boosting && this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
+            this.body.velocity.normalize();
+            this.body.velocity.setMagnitude(this.SPEED);
         }
     };
 
@@ -118,6 +148,13 @@
             this.game.add.existing(
                 b    
             );
+        }
+    }
+
+    Ship.boost = function() {
+        if (this.boostRate > this.BOOST_RATE) {
+            this.boostRate = 0;
+            this.boostTime = this.BOOST_TIME;
         }
     }
 

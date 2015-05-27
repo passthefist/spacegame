@@ -77,15 +77,18 @@ var GameState = function(game) {
 GameState.prototype.preload = function() {
     this.game.load.image('ship', 'ship.png');
     this.game.load.image('bullet', 'bullet.png');
+    this.game.load.image('background', 'stars.jpg');
 };
 
 // Setup the example
 GameState.prototype.create = function() {
     // Set stage background to something sky colored
-    this.game.stage.backgroundColor = 0x4488cc;
+    this.game.add.tileSprite(0, 0, 3377, 1899, 'background');
+    this.game.world.setBounds(0, 0, 3377, 1899);
 
     // Create a missile and add it to the game in the bottom center of the stage
-    this.ship = new Ship(this.game, this.game.width/2, this.game.height - 16);
+    this.ship = new Ship(this.game, 1300, 900);
+    this.game.camera.follow(this.ship);
     this.game.add.existing(
         this.ship
     );
@@ -94,10 +97,11 @@ GameState.prototype.create = function() {
 // The update() method is called every frame
 GameState.prototype.update = function() {
     input.update();
+
     if (input.down) {
         this.ship.targetVector(
-            game.input.activePointer.position.x,
-            game.input.activePointer.position.y
+            this.game.input.activePointer.position.x - this.game.world.x,
+            this.game.input.activePointer.position.y - this.game.world.y
         );
         this.ship.throttle(true);
     } else {
@@ -107,9 +111,13 @@ GameState.prototype.update = function() {
     if (game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
         this.ship.fire();
     }
+
+    if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+        this.ship.boost();
+    }
 };
 
-var game = new Phaser.Game(848, 450, Phaser.AUTO, 'gameview');
+var game = new Phaser.Game(1000, 650, Phaser.AUTO, 'gameview');
 game.state.add('game', GameState, true);
 
 </script>
