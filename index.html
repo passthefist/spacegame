@@ -13,7 +13,7 @@
 <script src='gamestate.js'></script>
 <script src='ship.js'></script>
 
-<div id = 'gameview'></div>
+<div oncontextmenu="return false" id='gameview'></div>
 
 <script>
 var peer = new Peer({key: 'lwjd5qra8257b9'});
@@ -75,9 +75,10 @@ var GameState = function(game) {
 
 // Load images and sounds
 GameState.prototype.preload = function() {
-    this.game.load.image('ship', 'ship.png');
     this.game.load.image('bullet', 'bullet.png');
     this.game.load.image('background', 'stars.jpg');
+    this.game.load.spritesheet('enemy', 'enemy.png',48,48);
+    this.game.load.spritesheet('ship', 'ship.png', 48, 48);
 };
 
 // Setup the example
@@ -88,10 +89,23 @@ GameState.prototype.create = function() {
     this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 
     // Create a missile and add it to the game in the bottom center of the stage
-    this.ship = new Ship(this.game, 1300, 900);
+    this.ship = new Ship(this.game, {
+        x: 1000,
+        y: 300,
+        sprite:'ship'
+    });
+    this.enemy = new Ship(this.game, {
+        x: 2100,
+        y: 1300,
+        sprite:'enemy'
+    });
     this.game.camera.follow(this.ship);
     this.game.add.existing(
         this.ship
+    );
+
+    this.game.add.existing(
+        this.enemy
     );
 };
 
@@ -99,14 +113,44 @@ GameState.prototype.create = function() {
 GameState.prototype.update = function() {
     input.update();
 
+    this.game.debug.text("Click to move", 30, 50);
+    this.game.debug.text("Q to shoot", 30, 70);
+    this.game.debug.text("W to boost", 30, 90);
+    this.game.debug.text("E to brake/reverse", 30, 110);
+
     if (input.down) {
-        this.ship.targetVector(
-            this.game.input.activePointer.position.x - this.game.world.x,
-            this.game.input.activePointer.position.y - this.game.world.y
-        );
         this.ship.throttle(true);
     } else {
         this.ship.throttle(false);
+    }
+
+    this.ship.targetVector(
+        this.game.input.activePointer.position.x - this.game.world.x,
+        this.game.input.activePointer.position.y - this.game.world.y
+    );
+
+    this.enemy.targetVector(
+        this.ship.x,
+        this.ship.y
+    );
+
+    this.enemy.throttle(true);
+
+    var dist = Phaser.Point.distance(this.ship, this.enemy);
+    console.log(dist);
+    
+    if (dist < 400) {
+        if (Math.random() > 0.95 ) {
+            this.enemy.fire();
+        }
+    }
+
+    if (dist < 300) {
+        this.enemy.retro();
+    }
+
+    if (dist > 450 && this.enemy.speed < 100 || dist > 550) {
+        this.enemy.boost();
     }
 
     if (game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
@@ -116,9 +160,13 @@ GameState.prototype.update = function() {
     if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
         this.ship.boost();
     }
+
+    if (game.input.keyboard.isDown(Phaser.Keyboard.E)) {
+        this.ship.retro();
+    }
 };
 
-var game = new Phaser.Game(720, 450, Phaser.AUTO, 'gameview');
+var game = new Phaser.Game(1440, 900, Phaser.AUTO, 'gameview');
 game.state.add('game', GameState, true);
 
 </script>

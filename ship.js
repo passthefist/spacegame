@@ -1,9 +1,15 @@
 (function() {
     // Missile constructor
-    this.Ship = function(game, x, y) {
-        Phaser.Sprite.call(this, game, x, y, 'ship');
-        this.targetY = x;
-        this.targetX = y;
+    this.Ship = function(game, conf) {
+        Phaser.Sprite.call(this, game, conf.x, conf.y, conf.sprite);
+        this.targetY = conf.x;
+        this.targetX = conf.y;
+
+        this.animations.add('idle',[0]);
+        this.animations.add('move',[0,1],20, true);
+        this.animations.add('boost',[1,2],20), true;
+
+        this.animations.play('idle');
 
         // Set the pivot point for this sprite to the center
         this.anchor.setTo(0.5, 0.5);
@@ -19,7 +25,7 @@
         this.BOOST_ASSIST_MAG = 5;
 
         // hafwidth of cone
-        this.BOOST_ASSIST_RANGE = 4*Math.PI/5;
+        this.BOOST_ASSIST_RANGE = Math.PI/2;
 
         this.FIRE_RATE = 15;
         this.timer = 0;
@@ -27,8 +33,14 @@
         this.BOOST_RATE = 120;
         this.boostRate = 0;
 
-        this.BOOST_TIME = 35;
+        this.BOOST_TIME = 50;
         this.boostTime = 0;
+
+        this.BRAKE_RATE = 120;
+        this.brakeRate = 0;
+
+        this.BRAKE_TIME = 35;
+        this.brakeTime = 0;
     };
 
     // Missiles are a type of Phaser.Sprite
@@ -39,6 +51,7 @@
     Ship.update = function() {
         this.timer ++;
         this.boostRate ++;
+        this.brakeRate ++;
 
         if (this.boostTime > 0) {
             this.boostTime --;
@@ -47,45 +60,57 @@
             this.boosting = false;
         }
 
-        if (this.active) {
-            // Calculate the angle from the missile to the mouse cursor game.input.x
-            // and game.input.y are the mouse position; substitute with whatever
-            // target coordinates you need.
-            var targetAngle = this.game.math.angleBetween(
-                this.x, this.y,
-                this.targetX, this.targetY
-            );
+        if (this.brakeTime > 0) {
+            this.brakeTime --;
+            this.braking = true;
+        } else {
+            this.braking = false;
+        }
 
-            var accelMod = 0;
+        // Calculate the angle from the missile to the mouse cursor game.input.x
+        // and game.input.y are the mouse position; substitute with whatever
+        // target coordinates you need.
+        var targetAngle = this.game.math.angleBetween(
+            this.x, this.y,
+            this.targetX, this.targetY
+        );
 
-            // Gradually (this.TURN_RATE) aim the missile towards the target angle
-            if (this.rotation !== targetAngle) {
-                // Calculate difference between the current angle and targetAngle
-                var delta = targetAngle - this.rotation;
+        var accelMod = 0;
+        var mag = 0;
 
-                // Keep it in range from -180 to 180 to make the most efficient turns.
-                if (delta > Math.PI) delta -= Math.PI * 2;
-                if (delta < -Math.PI) delta += Math.PI * 2;
+        // Gradually (this.TURN_RATE) aim the missile towards the target angle
+        if (this.rotation !== targetAngle) {
+            // Calculate difference between the current angle and targetAngle
+            var delta = targetAngle - this.rotation;
 
-                if (delta > 0) {
-                    // Turn clockwise
-                    this.angle += this.TURN_RATE;
-                } else {
-                    // Turn counter-clockwise
-                    this.angle -= this.TURN_RATE;
-                }
+            // Keep it in range from -180 to 180 to make the most efficient turns.
+            if (delta > Math.PI) delta -= Math.PI * 2;
+            if (delta < -Math.PI) delta += Math.PI * 2;
 
-                if (delta > this.BOOST_ASSIST_RANGE) {
-                    accelMod = (delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
-                } else if ( delta < -this.BOOST_ASSIST_RANGE ) {
-                    accelMod = (-delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
-                }
-
-                // Just set angle to target angle if they are close
-                if (Math.abs(delta) < this.game.math.degToRad(this.TURN_RATE)) {
-                    this.rotation = targetAngle;
-                }
+            if (delta > this.BOOST_ASSIST_RANGE) {
+                accelMod = (delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
+                mag = this.body.velocity.getMagnitude();
+            } else if ( delta < -this.BOOST_ASSIST_RANGE ) {
+                mag = this.body.velocity.getMagnitude();
+                accelMod = (-delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
             }
+
+            if (delta > 0) {
+                this.angle += this.TURN_RATE;
+            } else {
+                // Turn counter-clockwise
+                this.angle -= this.TURN_RATE;
+            }
+
+            // Just set angle to target angle if they are close
+            if (Math.abs(delta) < this.game.math.degToRad(this.TURN_RATE)) {
+                this.rotation = targetAngle;
+            }
+        }
+
+
+        if (this.active) {
+            this.animations.play('move');
 
             // Calculate velocity vector based on this.rotation and this.SPEED
             this.body.acceleration.x = Math.cos(this.rotation) * this.ACCEL
@@ -97,6 +122,7 @@
             }
 
         } else {
+            this.animations.play('idle');
             this.body.acceleration.x = 0;
             this.body.acceleration.y = 0;
 
@@ -108,9 +134,10 @@
         }
 
         if (this.boosting) {
+            this.animations.play('boost');
             this.SPEED = 550;
 
-            var boostMod = 3 * this.ACCEL * (this.boostTime/this.BOOST_TIME);
+            var boostMod = 4 * this.ACCEL * (this.boostTime/this.BOOST_TIME);
 
             this.body.acceleration.x += Math.cos(targetAngle) * boostMod/3 + Math.cos(this.rotation) * boostMod;
             this.body.acceleration.y += Math.sin(targetAngle) * boostMod/3 + Math.sin(this.rotation) * boostMod;
@@ -124,10 +151,17 @@
             }
         }
 
+        if (this.retroing) {
+            this.body.acceleration.x -= Math.cos(this.rotation) * this.ACCEL * 1.1;
+            this.body.acceleration.y -= Math.sin(this.rotation) * this.ACCEL * 1.1;
+        }
+
         if (!this.boosting && this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
             this.body.velocity.normalize();
             this.body.velocity.setMagnitude(this.SPEED);
         }
+
+        this.retroing = false;
     };
 
     Ship.targetVector = function(x,y) {
@@ -158,6 +192,17 @@
         }
     }
 
+    Ship.retro = function () {
+        this.retroing = true;
+    }
+
+    Ship.brake = function() {
+        if (this.brakeRate > this.BRAKE_RATE) {
+            this.brakeRate = 0;
+            this.brakeTime = this.BRAKE_TIME;
+        }
+    }
+
 }).apply(window);
 
 (function() {
@@ -168,8 +213,8 @@
 
         game.physics.enable(this, Phaser.Physics.ARCADE);
 
-        this.SPEED = 900;
-        this.LIFE = 20;
+        this.SPEED = 1200;
+        this.LIFE = 32;
         this.alive = 0;
     }
 
