@@ -85,6 +85,7 @@ GameState.prototype.create = function() {
     // Set stage background to something sky colored
     this.game.add.tileSprite(0, 0, 3377, 1899, 'background');
     this.game.world.setBounds(0, 0, 3377, 1899);
+    this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 
     // Create a missile and add it to the game in the bottom center of the stage
     this.ship = new Ship(this.game, 1300, 900);
@@ -117,7 +118,7 @@ GameState.prototype.update = function() {
     }
 };
 
-var game = new Phaser.Game(1000, 650, Phaser.AUTO, 'gameview');
+var game = new Phaser.Game(720, 450, Phaser.AUTO, 'gameview');
 game.state.add('game', GameState, true);
 
 </script>
