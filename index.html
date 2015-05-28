@@ -4,6 +4,10 @@
 <input type="button" id="connect" value="Click to connect"></input>
 </form>
 
+<button id="fullscreen">Fullscreen</button>
+
+<input type="checkbox" name="controls" value="controls" id="ctrl"> Toggle control style <br>
+
 <script src='http://cdn.peerjs.com/0.3.9/peer.js'></script>
 <script src='phaser.min.js'></script>
 <script src='event.js'></script>
@@ -13,7 +17,7 @@
 <script src='gamestate.js'></script>
 <script src='ship.js'></script>
 
-<div oncontextmenu="return false" id='gameview'></div>
+<div allowfullscreen="true" style="cursor:none;" oncontextmenu="return false" id='gameview'></div>
 
 <script>
 var peer = new Peer({key: 'lwjd5qra8257b9'});
@@ -77,6 +81,7 @@ var GameState = function(game) {
 GameState.prototype.preload = function() {
     this.game.load.image('bullet', 'bullet.png');
     this.game.load.image('background', 'stars.jpg');
+    this.game.load.image('cursor', 'cursortarget.png');
     this.game.load.spritesheet('enemy', 'enemy.png',48,48);
     this.game.load.spritesheet('ship', 'ship.png', 48, 48);
 };
@@ -107,27 +112,31 @@ GameState.prototype.create = function() {
     this.game.add.existing(
         this.enemy
     );
+
+    this.cursor = game.add.sprite(700,450,'cursor');
+
+    document.querySelector("#fullscreen").onclick = function() {
+        document.querySelector("#gameview").webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+    }
+
+    document.querySelector('#ctrl').onchange = (function (e) {
+        this.ctrlToggle = e.target.checked;
+    }).bind(this);
 };
 
 // The update() method is called every frame
 GameState.prototype.update = function() {
     input.update();
 
-    this.game.debug.text("Click to move", 30, 50);
-    this.game.debug.text("Q to shoot", 30, 70);
-    this.game.debug.text("W to boost", 30, 90);
-    this.game.debug.text("E to brake/reverse", 30, 110);
 
-    if (input.down) {
-        this.ship.throttle(true);
-    } else {
-        this.ship.throttle(false);
-    }
+    this.cursor.x = this.game.input.activePointer.worldX;
+    this.cursor.y = this.game.input.activePointer.worldY;
 
-    this.ship.targetVector(
+
+    /*this.ship.targetVector(
         this.game.input.activePointer.position.x - this.game.world.x,
         this.game.input.activePointer.position.y - this.game.world.y
-    );
+    );*/
 
     this.enemy.targetVector(
         this.ship.x,
@@ -137,7 +146,6 @@ GameState.prototype.update = function() {
     this.enemy.throttle(true);
 
     var dist = Phaser.Point.distance(this.ship, this.enemy);
-    console.log(dist);
     
     if (dist < 400) {
         if (Math.random() > 0.95 ) {
@@ -153,16 +161,71 @@ GameState.prototype.update = function() {
         this.enemy.boost();
     }
 
-    if (game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
-        this.ship.fire();
+    if (input.down) {
+        this.ship.fire(
+            this.game.input.activePointer.position.x - this.game.world.x,
+            this.game.input.activePointer.position.y - this.game.world.y
+        );
     }
 
-    if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+    if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
         this.ship.boost();
     }
 
-    if (game.input.keyboard.isDown(Phaser.Keyboard.E)) {
-        this.ship.retro();
+    if (!this.ctrlToggle ) {
+        this.game.debug.text("Click to fire", 30, 50);
+        this.game.debug.text("W to thrust", 30, 70);
+        this.game.debug.text("A/D to turn", 30, 90);
+        this.game.debug.text("S to brake/reverse", 30, 110);
+        this.game.debug.text("Space to boost", 30, 130);
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+            this.ship.throttle(true);
+        } else {
+            this.ship.throttle(false);
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+            this.ship.turnLeft();
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.S)) {
+            this.ship.retro();
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+            this.ship.turnRight();
+        }
+    } else {
+        this.game.debug.text("Click to fire", 30, 50);
+        this.game.debug.text("WASD to move", 30, 70);
+        this.game.debug.text("Space to boost", 30, 90);
+        this.game.debug.text("Shift to brake", 30, 130);
+
+        this.ship.throttle(false);
+        if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+            this.ship.headUp();
+            this.ship.throttle(true);
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+            this.ship.headLeft();
+            this.ship.throttle(true);
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.S)) {
+            this.ship.headDown();
+            this.ship.throttle(true);
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+            this.ship.headRight();
+            this.ship.throttle(true);
+        }
+
+        if (game.input.keyboard.isDown(Phaser.Keyboard.SHIFT)) {
+            this.ship.retro();
+        }
     }
 };
 

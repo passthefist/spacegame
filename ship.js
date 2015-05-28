@@ -41,6 +41,9 @@
 
         this.BRAKE_TIME = 35;
         this.brakeTime = 0;
+
+        this.strafeL = false;
+        this.strafeR = false;
     };
 
     // Missiles are a type of Phaser.Sprite
@@ -67,6 +70,72 @@
             this.braking = false;
         }
 
+        if (this.active) {
+            this.animations.play('move');
+
+            // Calculate velocity vector based on this.rotation and this.SPEED
+            this.body.acceleration.x = Math.cos(this.rotation) * this.ACCEL
+            this.body.acceleration.y = Math.sin(this.rotation) * this.ACCEL;
+        } else {
+            this.animations.play('idle');
+            this.body.acceleration.x = 0;
+            this.body.acceleration.y = 0;
+
+            var mag = this.body.velocity.getMagnitude();
+            if (mag < 0.05) {
+                mag = 0;
+            }
+            this.body.velocity.setMagnitude(0.98*mag);
+        }
+
+       if (this.boosting) {
+            this.animations.play('boost');
+            this.SPEED = 550;
+
+            var boostMod = 5 * this.ACCEL * (this.boostTime/this.BOOST_TIME);
+
+            this.body.acceleration.x += Math.cos(this.rotation) * boostMod;
+            this.body.acceleration.y += Math.sin(this.rotation) * boostMod;
+        } else {
+            if (this.SPEED > 250) {
+                var diff = (this.SPEED - 250)/10;
+                this.SPEED -= diff;
+                if (this.SPEED - 250 < 0.5) {
+                    this.SPEED = 250;
+                }
+            }
+        }
+
+        if (this.strafeR) {
+            this.body.acceleration.x += this.ACCEL * Math.cos(this.rotation - Math.PI/2);
+            this.body.acceleration.y += this.ACCEL * Math.sin(this.rotation - Math.PI/2);
+        }
+        if (this.strafeL) {
+            this.body.acceleration.x += this.ACCEL * Math.cos(this.rotation + Math.PI/2);
+            this.body.acceleration.y += this.ACCEL * Math.sin(this.rotation + Math.PI/2);
+        }
+
+        if (this.retroing) {
+            this.body.acceleration.x -= Math.cos(this.rotation) * this.ACCEL * 1.1;
+            this.body.acceleration.y -= Math.sin(this.rotation) * this.ACCEL * 1.1;
+        }
+
+        console.log(this.SPEED);
+
+        if (this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
+            this.body.velocity.normalize();
+            this.body.velocity.setMagnitude(this.SPEED);
+        }
+
+        this.retroing = false;
+        this.strafeL = false;
+        this.strafeR = false;
+    };
+
+    Ship.targetVector = function(x,y) {
+        this.targetX = x;
+        this.targetY = y;
+
         // Calculate the angle from the missile to the mouse cursor game.input.x
         // and game.input.y are the mouse position; substitute with whatever
         // target coordinates you need.
@@ -75,9 +144,12 @@
             this.targetX, this.targetY
         );
 
-        var accelMod = 0;
-        var mag = 0;
+        this.updateRotation(targetAngle);
 
+
+    }
+
+    Ship.updateRotation = function(targetAngle) {
         // Gradually (this.TURN_RATE) aim the missile towards the target angle
         if (this.rotation !== targetAngle) {
             // Calculate difference between the current angle and targetAngle
@@ -86,14 +158,6 @@
             // Keep it in range from -180 to 180 to make the most efficient turns.
             if (delta > Math.PI) delta -= Math.PI * 2;
             if (delta < -Math.PI) delta += Math.PI * 2;
-
-            if (delta > this.BOOST_ASSIST_RANGE) {
-                accelMod = (delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
-                mag = this.body.velocity.getMagnitude();
-            } else if ( delta < -this.BOOST_ASSIST_RANGE ) {
-                mag = this.body.velocity.getMagnitude();
-                accelMod = (-delta - this.BOOST_ASSIST_RANGE)/this.BOOST_ASSIST_RANGE;
-            }
 
             if (delta > 0) {
                 this.angle += this.TURN_RATE;
@@ -107,77 +171,68 @@
                 this.rotation = targetAngle;
             }
         }
+    }
+
+    Ship.headRight = function() {
+        this.throttle(true);
+
+        this.updateRotation(0);
+    }
 
 
-        if (this.active) {
-            this.animations.play('move');
+    Ship.headLeft = function() {
+        this.throttle(true);
 
-            // Calculate velocity vector based on this.rotation and this.SPEED
-            this.body.acceleration.x = Math.cos(this.rotation) * this.ACCEL
-            this.body.acceleration.y = Math.sin(this.rotation) * this.ACCEL;
+        this.updateRotation(Math.PI);
+    }
 
-            if (accelMod > 0) {
-                this.body.acceleration.x += Math.cos(targetAngle) * this.ACCEL * this.BOOST_ASSIST_MAG * accelMod;
-                this.body.acceleration.y += Math.sin(targetAngle) * this.ACCEL * this.BOOST_ASSIST_MAG * accelMod;
-            }
+    Ship.headUp = function() {
+        this.throttle(true);
 
-        } else {
-            this.animations.play('idle');
-            this.body.acceleration.x = 0;
-            this.body.acceleration.y = 0;
+        this.updateRotation(-Math.PI/2);
+    }
 
-            var mag = this.body.velocity.getMagnitude();
-            if (mag < 0.05) {
-                mag = 0;
-            }
-            this.body.velocity.setMagnitude(0.98*mag);
-        }
+    Ship.headDown = function() {
+        this.throttle(true);
 
-        if (this.boosting) {
-            this.animations.play('boost');
-            this.SPEED = 550;
+        this.updateRotation(Math.PI/2);
+    }
 
-            var boostMod = 4 * this.ACCEL * (this.boostTime/this.BOOST_TIME);
+    Ship.turnLeft = function(active) {
+        this.angle -= this.TURN_RATE;
+    }
 
-            this.body.acceleration.x += Math.cos(targetAngle) * boostMod/3 + Math.cos(this.rotation) * boostMod;
-            this.body.acceleration.y += Math.sin(targetAngle) * boostMod/3 + Math.sin(this.rotation) * boostMod;
-        } else {
-            if (this.SPEED > 250) {
-                var diff = (this.SPEED - 250)/10;
-                this.SPEED -= diff;
-                if (this.SPEED - 250 < 0.5) {
-                    this.SPEED = 250;
-                }
-            }
-        }
+    Ship.turnRight = function(active) {
+        this.angle += this.TURN_RATE;
+    }
 
-        if (this.retroing) {
-            this.body.acceleration.x -= Math.cos(this.rotation) * this.ACCEL * 1.1;
-            this.body.acceleration.y -= Math.sin(this.rotation) * this.ACCEL * 1.1;
-        }
+    Ship.strafeLeft = function(active) {
+        this.strafeL = true;
+    }
 
-        if (!this.boosting && this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
-            this.body.velocity.normalize();
-            this.body.velocity.setMagnitude(this.SPEED);
-        }
-
-        this.retroing = false;
-    };
-
-    Ship.targetVector = function(x,y) {
-        this.targetX = x;
-        this.targetY = y;
+    Ship.strafeRight = function(active) {
+        this.strafeR = true;
     }
 
     Ship.throttle = function(active) {
         this.active = active;
     }
 
-    Ship.fire = function() {
+    Ship.fire = function(x,y) {
         if (this.timer > this.FIRE_RATE) {
             this.timer = 0;
+
             var b = new Bullet(this.game,this.x, this.y);
-            b.init(this.rotation);
+            var ang = this.rotation;
+
+            if (x && y) {
+                console.log(x,y);
+                ang = this.game.math.angleBetween(
+                    this.x, this.y,
+                    x,y
+                );
+            }
+            b.init(ang);
 
             this.game.add.existing(
                 b    
