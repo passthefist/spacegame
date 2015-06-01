@@ -112,6 +112,13 @@ Main.prototype.create = function() {
     }).bind(this);
 
     this.shadow = {x:0,y:0,s:0,r:0,dx:0,dy:0};
+
+    var ping = function() {
+        conn.sendPing();
+    }
+
+    setInterval(ping,5000);
+
 };
 
 // The update() method is called every frame
@@ -215,6 +222,8 @@ Main.prototype.update = function() {
     this.enemy.x += (this.shadow.x - this.enemy.x)/10;
     this.enemy.y += (this.shadow.y - this.enemy.y)/10;
     this.enemy.rotation = this.shadow.r;
+
+    this.game.debug.text("Ping: "+conn.ping, 1230, 50);
 };
 
 var game = new Phaser.Game(1440, 900, Phaser.AUTO, 'gameview');
