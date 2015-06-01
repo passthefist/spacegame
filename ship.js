@@ -120,8 +120,6 @@
             this.body.acceleration.y -= Math.sin(this.rotation) * this.ACCEL * 1.1;
         }
 
-        console.log(this.SPEED);
-
         if (this.body.velocity.getMagnitudeSq() > this.SPEED * this.SPEED) {
             this.body.velocity.normalize();
             this.body.velocity.setMagnitude(this.SPEED);
@@ -226,7 +224,6 @@
             var ang = this.rotation;
 
             if (x && y) {
-                console.log(x,y);
                 ang = this.game.math.angleBetween(
                     this.x, this.y,
                     x,y

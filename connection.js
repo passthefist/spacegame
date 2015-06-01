@@ -1,11 +1,14 @@
 (function() {
-    this.Connection = function() {
+    this.Connection = function(lag,loss) {
         var bench = new Bench();
         
         this.peer = null;
         this.id = undefined;
         this.peerId = undefined;
         this.isHost = undefined;
+
+        this.lag = lag|0;
+        this.loss = loss|0;
 
         this.connect = new Act();
         this.ready = new Act();
@@ -39,7 +42,11 @@
     var Connection = this.Connection.prototype;
 
     Connection.send = function(data) {
-        this.connection.send(data);
+        if (Math.random() * 100 > this.loss) {
+            window.setTimeout((function() {
+                this.connection.send(data);
+            }).bind(this),this.lag);
+        }
     }
 
     Connection.recv = function() {
