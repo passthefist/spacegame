@@ -25,6 +25,7 @@
             self.ready.publish(id);
 
             peer.on('connection', function(conn) {
+                console.log("Connection init: client");
                 self.connection = conn;
                 self.isHost = false;
                 
@@ -38,7 +39,6 @@
     var Connection = this.Connection.prototype;
 
     Connection.send = function(data) {
-        console.log('sending',data);
         this.connection.send(data);
     }
 
@@ -61,11 +61,11 @@
     Connection._setupEvents = function(conn) {
         var self = this;
         conn.on('data', function(data) {
-            console.log('Received', data);
             self.buffer.push(data);
         });
 
         conn.on('open', function() {
+            console.log('Connected');
             self.connect.publish(self);
         });
 

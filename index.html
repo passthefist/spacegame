@@ -16,6 +16,7 @@
 <script src='input.js'></script>
 <script src='gamestate.js'></script>
 <script src='ship.js'></script>
+<script src='timer.js'></script>
 
 <div allowfullscreen="true" style="cursor:none;" oncontextmenu="return false" id='gameview'></div>
 
@@ -30,64 +31,52 @@ var manager = new GameStateManager();
 var input = new Input();
 var conn = new Connection();
 
-/*
-var game = new Phaser.Game(800, 600, Phaser.AUTO, 'gameview', { preload: preload, create: create, update: update });
 
-function preload() {
-    game.load.image('stick', 'stick.png');
+var Intro = function() {
 }
 
-function create() {
-    manager.set('main');
-}
+this.Intro.prototype.preload = function() {
+    this.name = "intro";
 
-function update() {
-    input.update();
-    manager.update();
-}
+    conn.ready.on(this, function(id) {
+        label.innerText = id;
+    });
 
-(function() {
-    this.Intro = function() {
-        this.name = "intro";
+    conn.connect.on(this, function(conn) {
+        var data ={};
+        data.conn = conn;
+        this.game.state.start('main', true,false,data);
+    });
 
-        conn.ready.on(this, function(id) {
-            label.innerText = id;
-        });
-
-        conn.connect.on(this, function(conn) {
-            var data ={};
-            data.conn = conn;
-            manager.set('main',data);
-        });
-
-        button.onclick = function(e) {
-            e.preventDefault();
-            conn.connectTo(peerId.value);
-            return false;
-        }
+    button.onclick = function(e) {
+        e.preventDefault();
+        conn.connectTo(peerId.value);
+        return false;
     }
+}
 
-    this.Intro.prototype = new GameState();
-    var Intro = this.Intro.prototype;
+this.Intro.prototype.create = function() {
+}
+this.Intro.prototype.update = function() {
+}
 
-}).apply(window);
 
-*/
-
-var GameState = function(game) {
+var Main = function(game) {
 };
 
 // Load images and sounds
-GameState.prototype.preload = function() {
+Main.prototype.preload = function() {
     this.game.load.image('bullet', 'bullet.png');
     this.game.load.image('background', 'stars.jpg');
     this.game.load.image('cursor', 'cursortarget.png');
     this.game.load.spritesheet('enemy', 'enemy.png',48,48);
     this.game.load.spritesheet('ship', 'ship.png', 48, 48);
+
+    this.game.stage.disableVisibilityChange = true;
 };
 
 // Setup the example
-GameState.prototype.create = function() {
+Main.prototype.create = function() {
     // Set stage background to something sky colored
     this.game.add.tileSprite(0, 0, 3377, 1899, 'background');
     this.game.world.setBounds(0, 0, 3377, 1899);
@@ -125,41 +114,13 @@ GameState.prototype.create = function() {
 };
 
 // The update() method is called every frame
-GameState.prototype.update = function() {
+Main.prototype.update = function() {
     input.update();
-
 
     this.cursor.x = this.game.input.activePointer.worldX;
     this.cursor.y = this.game.input.activePointer.worldY;
 
-
-    /*this.ship.targetVector(
-        this.game.input.activePointer.position.x - this.game.world.x,
-        this.game.input.activePointer.position.y - this.game.world.y
-    );*/
-
-    this.enemy.targetVector(
-        this.ship.x,
-        this.ship.y
-    );
-
-    this.enemy.throttle(true);
-
     var dist = Phaser.Point.distance(this.ship, this.enemy);
-    
-    if (dist < 400) {
-        if (Math.random() > 0.95 ) {
-            this.enemy.fire();
-        }
-    }
-
-    if (dist < 300) {
-        this.enemy.retro();
-    }
-
-    if (dist > 450 && this.enemy.speed < 100 || dist > 550) {
-        this.enemy.boost();
-    }
 
     if (input.down) {
         this.ship.fire(
@@ -169,7 +130,7 @@ GameState.prototype.update = function() {
     }
 
     if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-        this.ship.boost();
+        this.ship.fire();
     }
 
     if (!this.ctrlToggle ) {
@@ -227,9 +188,25 @@ GameState.prototype.update = function() {
             this.ship.retro();
         }
     }
+
+    conn.send({
+        t:this.game.time.time,
+        x:this.ship.x,
+        y:this.ship.y,
+        r:this.ship.rotation,
+    });
+
+    var acts = conn.recv();
+    if (acts.length > 0) {
+        var state = acts[0];
+        this.enemy.x = state.x;
+        this.enemy.y = state.y;
+        this.enemy.rotation = state.r;
+    }
 };
 
 var game = new Phaser.Game(1440, 900, Phaser.AUTO, 'gameview');
-game.state.add('game', GameState, true);
+game.state.add('intro', Intro, true);
+game.state.add('main', Main, false);
 
 </script>
