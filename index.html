@@ -202,7 +202,6 @@ Main.prototype.update = function() {
 
     this.shadow.x += this.game.time.physicsElapsed * (this.shadow.s * Math.cos(this.shadow.r) + this.shadow.dx)/2;
     this.shadow.y += this.game.time.physicsElapsed * (this.shadow.s * Math.sin(this.shadow.r) + this.shadow.dy)/2;
-    console.log(this.shadow.s);
 
     var acts = conn.recv();
     if (acts.length > 0) {

@@ -14,6 +14,8 @@
         this.ready = new Act();
         this.close = new Act();
 
+        this.ping = undefined;
+
         this.buffer = [];
 
         var self = this;
@@ -65,10 +67,25 @@
         }
     }
 
+    Connection.sendPing = function() {
+        this.pingStart = (new Date()).getTime();
+        this.send("ping");
+    }
+
     Connection._setupEvents = function(conn) {
         var self = this;
         conn.on('data', function(data) {
-            self.buffer.push(data);
+            if (data === "ping") {
+                console.log("pinged");
+                self.send("pong");
+            } else if (data === "pong") {
+                console.log("ponged");
+                self.ping = (new Date()).getTime() - self.pingStart;
+                console.log("PING: "+self.ping);
+3
+            } else {
+                self.buffer.push(data);
+            }
         });
 
         conn.on('open', function() {
