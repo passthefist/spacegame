@@ -76,13 +76,9 @@
         var self = this;
         conn.on('data', function(data) {
             if (data === "ping") {
-                console.log("pinged");
                 self.send("pong");
             } else if (data === "pong") {
-                console.log("ponged");
                 self.ping = (new Date()).getTime() - self.pingStart;
-                console.log("PING: "+self.ping);
-3
             } else {
                 self.buffer.push(data);
             }

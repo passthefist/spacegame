@@ -15,7 +15,8 @@
         this.anchor.setTo(0.5, 0.5);
 
         // Enable physics on the missile
-        game.physics.enable(this, Phaser.Physics.ARCADE);
+        this.game.physics.enable(this, Phaser.Physics.ARCADE);
+        this.body.collideWorldBounds = true
 
         // Define constants that affect motion
         this.SPEED = 250; // missile speed pixels/second
@@ -220,7 +221,6 @@
         if (this.timer > this.FIRE_RATE) {
             this.timer = 0;
 
-            var b = new Bullet(this.game,this.x, this.y);
             var ang = this.rotation;
 
             if (x && y) {
@@ -229,11 +229,13 @@
                     x,y
                 );
             }
-            b.init(ang);
 
-            this.game.add.existing(
-                b    
-            );
+            this.game.registry.create('bullet',{
+                x:this.x,
+                y:this.y,
+                ang: ang
+            }); 
+
         }
     }
 
@@ -255,11 +257,14 @@
         }
     }
 
+    Ship.applyCollision = function(obj) {
+    }
+
 }).apply(window);
 
 (function() {
     // Missile constructor
-    this.Bullet = function(game, x, y) {
+    this.Bullet = function(game, x, y, ang) {
         Phaser.Sprite.call(this, game, x, y, 'bullet');
         this.anchor.setTo(0.5, 0.5);
 
@@ -268,6 +273,23 @@
         this.SPEED = 1200;
         this.LIFE = 32;
         this.alive = 0;
+
+        this.rotation = ang;
+        this.body.velocity.x = this.SPEED * Math.cos(ang);
+        this.body.velocity.y = this.SPEED * Math.sin(ang);
+
+        this.explode = false;
+
+        this.events.onDestroy.add(function() {
+            if (this.explode) {
+                var effect = new AnimationEffect(this.game, this.x, this.y, {
+                    sheet:'bulletexplode',
+                    frames:[0,1,2,3],
+                    rate:20
+                });
+            }
+        }, this);
+
     }
 
     // Missiles are a type of Phaser.Sprite
@@ -276,16 +298,37 @@
     var Bullet = this.Bullet.prototype;
 
     Bullet.init = function(ang) {
-        this.rotation = ang;
-        this.body.velocity.x = this.SPEED * Math.cos(ang);
-        this.body.velocity.y = this.SPEED * Math.sin(ang);
     }
 
     Bullet.update = function(ang) {
         this.alive++;
         if (this.alive > this.LIFE) {
-            this.destroy();
+            this.game.registry.removeItem(this);
         }
+    }
+
+    Bullet.applyCollision = function(obj) {
+        this.explode = true;
+        this.game.registry.removeItem(this);
     }
 }).apply(window);
 
+(function() {
+    // Missile constructor
+    this.AnimationEffect = function(game, x, y, config) {
+        Phaser.Sprite.call(this, game, x, y, config.sheet);
+        this.anchor.setTo(0.5, 0.5);
+
+        this.game.add.existing(
+            this
+        );
+
+        this.animations.add('anim',config.frames,config.rate);
+
+        this.animations.play('anim',config.rate,false,true);
+    }
+
+    // Missiles are a type of Phaser.Sprite
+    this.AnimationEffect.prototype = Object.create(Phaser.Sprite.prototype);
+    this.AnimationEffect.prototype.constructor = this.Bullet;
+}).apply(window);

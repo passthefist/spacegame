@@ -70,8 +70,105 @@ Main.prototype.preload = function() {
     this.game.load.image('cursor', 'cursortarget.png');
     this.game.load.spritesheet('enemy', 'enemy.png',48,48);
     this.game.load.spritesheet('ship', 'ship.png', 48, 48);
+    this.game.load.spritesheet('bulletexplode', 'bulletexplode.png', 28, 28);
 
     this.game.stage.disableVisibilityChange = true;
+
+    this.game.registry = {};
+    this.game.registry.local = {};
+    this.game.registry.remote = {};
+
+    this.game.registry.add = (function(item, iid) {
+        if (iid == undefined) {
+            iid = this.game.makeiid();
+            this.game.registry.local[iid] = item;
+        } else {
+            this.game.registry.remote[iid] = item;
+        }
+
+        item.iid = iid;
+        return iid;
+    }).bind(this);
+
+    this.game.registry.create = (function(type,config,iid) {
+        var obj;
+        switch(type) {
+            case 'ship':
+                obj = new Ship(this.game, {
+                    x: config.x,
+                    y: config.y,
+                    sprite:'ship'
+                });
+                break;
+            case 'bullet':
+                obj = new Bullet(this.game,
+                    config.x,
+                    config.y,
+                    config.ang
+                );
+                break;
+        }
+
+        obj.iid = this.game.registry.add(obj,iid);
+
+        this.game.add.existing(
+            obj
+        );
+        
+        if (iid == undefined) {
+            conn.send({
+                _:'add',
+                o:type,
+                c:config,
+                i:obj.iid
+            });
+        }
+
+        return obj;
+    }).bind(this);
+
+    this.game.registry.removeItem = (function(item) {
+        this.game.registry.remove(item.iid);
+    }).bind(this);
+
+    this.game.registry.remove = (function(iid) {
+            if (this.game.registry.local[iid]) {
+                this.game.registry.local[iid].destroy();
+                delete this.game.registry.local[iid];
+
+                conn.send({
+                    _:'remove',
+                    i:iid
+                });
+            }
+
+            if (this.game.registry.remote[iid]) {
+                this.game.registry.remote[iid].destroy();
+                delete this.game.registry.remote[iid];
+            }
+
+    }).bind(this);
+
+    this.game.registry.localObjs = (function() {
+        var arr = [];
+        for(var i in this.game.registry.local) {
+            arr.push(this.game.registry.local[i]);
+        } 
+        return arr;
+    }).bind(this);
+
+    this.game.registry.remoteObjs = (function() {
+        var arr = [];
+        for(var i in this.game.registry.remote) {
+            arr.push(this.game.registry.remote[i]);
+        } 
+        return arr;
+    }).bind(this);
+    
+    var iidseed = 0;
+    this.game.makeiid = (function() {
+        return (iidseed++).toString(16)+Math.random().toString(16).substring(2);
+    });
 };
 
 // Setup the example
@@ -82,24 +179,12 @@ Main.prototype.create = function() {
     this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 
     // Create a missile and add it to the game in the bottom center of the stage
-    this.ship = new Ship(this.game, {
-        x: 1000,
-        y: 300,
-        sprite:'ship'
+    this.ship = this.game.registry.create('ship', {
+        x: 300+3000*Math.random(),
+        y: 200+1500*Math.random(),
     });
-    this.enemy = new Ship(this.game, {
-        x: 2100,
-        y: 1300,
-        sprite:'enemy'
-    });
-    this.game.camera.follow(this.ship);
-    this.game.add.existing(
-        this.ship
-    );
 
-    this.game.add.existing(
-        this.enemy
-    );
+    this.game.camera.follow(this.ship);
 
     this.cursor = game.add.sprite(700,450,'cursor');
 
@@ -119,6 +204,7 @@ Main.prototype.create = function() {
 
     setInterval(ping,5000);
 
+    this.game.physics.startSystem(Phaser.Physics.ARCADE);
 };
 
 // The update() method is called every frame
@@ -128,8 +214,6 @@ Main.prototype.update = function() {
     this.cursor.x = this.game.input.activePointer.worldX;
     this.cursor.y = this.game.input.activePointer.worldY;
 
-    var dist = Phaser.Point.distance(this.ship, this.enemy);
-
     if (input.down) {
         this.ship.fire(
             this.game.input.activePointer.position.x - this.game.world.x,
@@ -137,7 +221,7 @@ Main.prototype.update = function() {
         );
     }
 
-    if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+    if (this.game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
         this.ship.fire();
     }
 
@@ -148,21 +232,21 @@ Main.prototype.update = function() {
         this.game.debug.text("S to brake/reverse", 30, 110);
         this.game.debug.text("Space to boost", 30, 130);
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.W)) {
             this.ship.throttle(true);
         } else {
             this.ship.throttle(false);
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.A)) {
             this.ship.turnLeft();
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.S)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.S)) {
             this.ship.retro();
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.D)) {
             this.ship.turnRight();
         }
     } else {
@@ -172,32 +256,34 @@ Main.prototype.update = function() {
         this.game.debug.text("Shift to brake", 30, 130);
 
         this.ship.throttle(false);
-        if (game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.W)) {
             this.ship.headUp();
             this.ship.throttle(true);
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.A)) {
             this.ship.headLeft();
             this.ship.throttle(true);
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.S)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.S)) {
             this.ship.headDown();
             this.ship.throttle(true);
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.D)) {
             this.ship.headRight();
             this.ship.throttle(true);
         }
 
-        if (game.input.keyboard.isDown(Phaser.Keyboard.SHIFT)) {
+        if (this.game.input.keyboard.isDown(Phaser.Keyboard.SHIFT)) {
             this.ship.retro();
         }
     }
 
     conn.send({
+        _:'move',
+        o:this.ship.iid,
         t:this.game.time.time,
         x:this.ship.x,
         y:this.ship.y,
@@ -207,23 +293,44 @@ Main.prototype.update = function() {
         s:this.ship.body.speed
     });
 
-    this.shadow.x += this.game.time.physicsElapsed * (this.shadow.s * Math.cos(this.shadow.r) + this.shadow.dx)/2;
-    this.shadow.y += this.game.time.physicsElapsed * (this.shadow.s * Math.sin(this.shadow.r) + this.shadow.dy)/2;
+    this.shadow.x += this.game.time.physicsElapsed * (this.shadow.s * Math.cos(this.shadow.r) + 2*this.shadow.dx)/3;
+    this.shadow.y += this.game.time.physicsElapsed * (this.shadow.s * Math.sin(this.shadow.r) + 2*this.shadow.dy)/3;
 
     var acts = conn.recv();
-    if (acts.length > 0) {
-        var state = acts[0];
-        this.shadow.x = state.x;
-        this.shadow.y = state.y;
-        this.shadow.s = state.s;
-        this.shadow.r = state.r;
+    for(var i =0; i < acts.length; i++) {
+        var act = acts[i];
+        switch(act._) {
+            case 'move':
+                this.shadow.x = act.x;
+                this.shadow.y = act.y;
+                this.shadow.s = act.s;
+                this.shadow.r = act.r;
+                break;
+            case 'add':
+                var obj = this.game.registry.create(act.o,act.c,act.i);
+                if (act.o == 'ship') {
+                    this.enemy = obj;
+                }
+                break;
+            case 'remove':
+                this.game.registry.remove(act.i);
+                break;
+        }
     }
 
-    this.enemy.x += (this.shadow.x - this.enemy.x)/10;
-    this.enemy.y += (this.shadow.y - this.enemy.y)/10;
-    this.enemy.rotation = this.shadow.r;
+    if (this.enemy) {
+        this.enemy.x += (this.shadow.x - this.enemy.x)/5;
+        this.enemy.y += (this.shadow.y - this.enemy.y)/5;
+        this.enemy.rotation = this.shadow.r;
+    }
 
     this.game.debug.text("Ping: "+conn.ping, 1230, 50);
+
+    this.game.physics.arcade.collide(this.game.registry.localObjs(),this.game.registry.remoteObjs(),function(){},function(obj1,obj2) {
+        obj1.applyCollision(obj2);
+        obj2.applyCollision(obj1);
+        return false;
+    },this);
 };
 
 var game = new Phaser.Game(1440, 900, Phaser.AUTO, 'gameview');
