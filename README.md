@@ -2,7 +2,7 @@
 
 Play at http://rdgoetz.github.io/spacegame/
 
-This project is an experiment to see if the WEBrtc network stack can be used in a p2p networked action game.
+This project is an experiment to see if the WEBrtc network stack can be used in a p2p networked action game, using only browser technologies.
 
 Game state synchronization is done by each client running two simulations, one from networked data and one from local state. Game objects are strictly owned by either the local or network sim. For a player's local state, there's 3 sources of events that can modify the simulation: user input, local game events, and remote game events. For a player's network state, the only source of events that can modify the simulation come from the network.
 
