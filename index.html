@@ -1,12 +1,10 @@
-<form>
-<label id="id" for="peer"></label>
-<input type="text" name="peer" id="peer"/>
-<input type="button" id="connect" value="Click to connect"></input>
-</form>
-
+Share this code with a friend to play: <span id="id" style="background-color:#00F;color:#FFF;">???</span>.
+<input type="text" name="peer" id="peer" value="Enter opponent's code"/>
+<input type="button" id="connect" value="Connect and play!"></input>
 <button id="fullscreen">Fullscreen</button>
+<hr/>
 
-<input type="checkbox" name="controls" value="controls" id="ctrl"> Toggle control style <br>
+<!--<input type="checkbox" name="controls" value="controls" id="ctrl"> Toggle control style <br>-->
 
 <script src='http://cdn.peerjs.com/0.3.9/peer.js'></script>
 <script src='phaser.min.js'></script>
@@ -30,12 +28,23 @@ var manager = new GameStateManager();
 var input = new Input();
 var conn = new Connection();
 
+peerId.onfocus = function() {
+    peerId.value = "";
+}
+
 
 var Intro = function() {
 }
 
 this.Intro.prototype.preload = function() {
-    this.name = "intro";
+    this.game.load.image('bullet', 'bullet.png');
+    this.game.load.image('background', 'stars.jpg');
+    this.game.load.image('cursor', 'cursortarget.png');
+    this.game.load.spritesheet('enemy', 'enemy.png',48,48);
+    this.game.load.spritesheet('ship', 'ship.png', 48, 48);
+    this.game.load.spritesheet('bulletexplode', 'bulletexplode.png', 28, 28);
+
+    this.game.stage.disableVisibilityChange = true;
 
     conn.ready.on(this, function(id) {
         label.innerText = id;
@@ -65,14 +74,6 @@ var Main = function(game) {
 
 // Load images and sounds
 Main.prototype.preload = function() {
-    this.game.load.image('bullet', 'bullet.png');
-    this.game.load.image('background', 'stars.jpg');
-    this.game.load.image('cursor', 'cursortarget.png');
-    this.game.load.spritesheet('enemy', 'enemy.png',48,48);
-    this.game.load.spritesheet('ship', 'ship.png', 48, 48);
-    this.game.load.spritesheet('bulletexplode', 'bulletexplode.png', 28, 28);
-
-    this.game.stage.disableVisibilityChange = true;
 
     this.game.registry = {};
     this.game.registry.local = {};
@@ -192,9 +193,9 @@ Main.prototype.create = function() {
         document.querySelector("#gameview").webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
     }
 
-    document.querySelector('#ctrl').onchange = (function (e) {
+    /*document.querySelector('#ctrl').onchange = (function (e) {
         this.ctrlToggle = e.target.checked;
-    }).bind(this);
+    }).bind(this);*/
 
     this.shadow = {x:0,y:0,s:0,r:0,dx:0,dy:0};
 
