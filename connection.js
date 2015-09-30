@@ -1,7 +1,7 @@
 (function() {
     this.Connection = function(lag,loss) {
         var bench = new Bench();
-        
+
         this.peer = null;
         this.id = undefined;
         this.peerId = undefined;
@@ -20,7 +20,7 @@
 
         var self = this;
 
-        var peer = new Peer({key: 'lwjd5qra8257b9'});
+        var peer = new Peer({key: '8sguglthndfxyldi'});
 
         peer.on('open', function(id) {
             console.log("peer is open");
@@ -33,7 +33,7 @@
                 console.log("Connection init: client");
                 self.connection = conn;
                 self.isHost = false;
-                
+
                 self.peerId = self.connection.peer;
 
                 self._setupEvents(self.connection);
